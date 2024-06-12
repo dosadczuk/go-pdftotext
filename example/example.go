@@ -26,5 +26,5 @@ func main() {
 		log.Panic(err)
 	}
 
-	fmt.Print(string(txt))
+	fmt.Println(string(txt))
 }
