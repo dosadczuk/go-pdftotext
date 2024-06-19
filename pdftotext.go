@@ -9,6 +9,7 @@ package pdftotext
 
 import (
 	"bytes"
+	"context"
 	"io"
 	"os/exec"
 	"strconv"
@@ -34,8 +35,8 @@ func NewCommand(opts ...option) *command {
 }
 
 // Run executes prepared `pdftotext` command.
-func (c *command) Run(inpath string) (io.Reader, error) {
-	cmd := exec.Command(c.path, append(c.args, inpath, "-")...)
+func (c *command) Run(ctx context.Context, inpath string) (io.Reader, error) {
+	cmd := exec.CommandContext(ctx, c.path, append(c.args, inpath, "-")...)
 
 	out, err := cmd.Output()
 	if err != nil {

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"log"
@@ -16,7 +17,7 @@ func main() {
 		pdftotext.WithNoPageBreak(),
 	)
 
-	out, err := cmd.Run("./example.pdf")
+	out, err := cmd.Run(context.Background(), "./example.pdf")
 	if err != nil {
 		log.Panic(err)
 	}
