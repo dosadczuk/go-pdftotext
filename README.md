@@ -1,4 +1,4 @@
-# pdftotext
+# go-pdftotext
 
 Package pdftotext is a wrapper around Xpdf command line tool `pdftotext`.
 
