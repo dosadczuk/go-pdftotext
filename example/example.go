@@ -6,7 +6,7 @@ import (
 	"io"
 	"log"
 
-	"github.com/dosadczuk/pdftotext"
+	"github.com/dosadczuk/go-pdftotext"
 )
 
 func main() {
