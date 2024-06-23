@@ -11,7 +11,6 @@ import (
 	"bytes"
 	"context"
 	"io"
-	"log"
 	"os/exec"
 	"strconv"
 )
@@ -20,14 +19,14 @@ import (
 // -- `pdftotext`
 // ----------------------------------------------------------------------------
 
-type command struct {
+type Command struct {
 	path string
 	args []string
 }
 
 // NewCommand creates new `pdftotext` command.
-func NewCommand(opts ...option) *command {
-	cmd := &command{path: "pdftotext"}
+func NewCommand(opts ...option) (*Command, error) {
+	cmd := &Command{path: "pdftotext"}
 	for _, opt := range opts {
 		opt(cmd)
 	}
@@ -37,14 +36,14 @@ func NewCommand(opts ...option) *command {
 	// assert that executable exists and get absolute path
 	cmd.path, err = exec.LookPath(cmd.path)
 	if err != nil {
-		log.Fatal(err)
+		return nil, err
 	}
 
-	return cmd
+	return cmd, nil
 }
 
 // Run executes prepared `pdftotext` command.
-func (c *command) Run(ctx context.Context, inpath string) (io.Reader, error) {
+func (c *Command) Run(ctx context.Context, inpath string) (io.Reader, error) {
 	cmd := exec.CommandContext(ctx, c.path, append(c.args, inpath, "-")...)
 
 	out, err := cmd.Output()
@@ -56,7 +55,7 @@ func (c *command) Run(ctx context.Context, inpath string) (io.Reader, error) {
 }
 
 // String returns a human-readable description of the command.
-func (c *command) String() string {
+func (c *Command) String() string {
 	return exec.Command(c.path, append(c.args, "<inpath>")...).String()
 }
 
@@ -64,39 +63,39 @@ func (c *command) String() string {
 // -- `pdftotext` options
 // ----------------------------------------------------------------------------
 
-type option func(*command)
+type option func(*Command)
 
 // Set custom location for `pdftotext` executable.
 func WithCustomPath(path string) option {
-	return func(c *command) {
+	return func(c *Command) {
 		c.path = path
 	}
 }
 
 // Read config-file in place of ~/.xpdfrc or the system-wide config file.
 func WithCustomConfig(path string) option {
-	return func(c *command) {
+	return func(c *Command) {
 		c.args = append(c.args, "-cfg", path)
 	}
 }
 
 // Specifies the first page to convert.
 func WithPageFrom(page uint64) option {
-	return func(c *command) {
+	return func(c *Command) {
 		c.args = append(c.args, "-f", strconv.FormatUint(page, 10))
 	}
 }
 
 // Specifies the last page to convert.
 func WithPageTo(page uint64) option {
-	return func(c *command) {
+	return func(c *Command) {
 		c.args = append(c.args, "-l", strconv.FormatUint(page, 10))
 	}
 }
 
 // Specifies the range of pages to convert.
 func WithPageRange(from, to uint64) option {
-	return func(c *command) {
+	return func(c *Command) {
 		WithPageFrom(from)
 		WithPageTo(to)
 	}
@@ -104,7 +103,7 @@ func WithPageRange(from, to uint64) option {
 
 // Maintain (as best as possible) the original physical layout of the text.
 func WithModeLayout() option {
-	return func(c *command) {
+	return func(c *Command) {
 		c.args = append(c.args, "-layout")
 	}
 }
@@ -114,7 +113,7 @@ func WithModeLayout() option {
 // This mode will do a better job of maintaining horizontal spacing, but it
 // will only work properly with a single column of text.
 func WithModeSimple() option {
-	return func(c *command) {
+	return func(c *Command) {
 		c.args = append(c.args, "-simple")
 	}
 }
@@ -123,7 +122,7 @@ func WithModeSimple() option {
 //
 // Only works for pages with a single column of text.
 func WithModeSimple2() option {
-	return func(c *command) {
+	return func(c *Command) {
 		c.args = append(c.args, "-simple2")
 	}
 }
@@ -135,7 +134,7 @@ func WithModeSimple2() option {
 // If the `WithCharFixedWidth` option is given, character spacing within each
 // line will be determined by the specified character pitch.
 func WithModeTable() option {
-	return func(c *command) {
+	return func(c *Command) {
 		c.args = append(c.args, "-table")
 	}
 }
@@ -151,7 +150,7 @@ func WithModeTable() option {
 // If one or both are not given on the command line, it will attempt to compute
 // appropriate value(s).
 func WithModeLinePrinter() option {
-	return func(c *command) {
+	return func(c *Command) {
 		c.args = append(c.args, "-lineprinter")
 	}
 }
@@ -160,7 +159,7 @@ func WithModeLinePrinter() option {
 //
 // Depending on how the PDF file was generated, this may or may not be useful.
 func WithModeRaw() option {
-	return func(c *command) {
+	return func(c *Command) {
 		c.args = append(c.args, "-raw")
 	}
 }
@@ -169,7 +168,7 @@ func WithModeRaw() option {
 //
 // Works only with `WithModeLayout`, `WithModeTable` and `WithModeLinePrinter`.
 func WithCharFixedWidth(width uint64) option {
-	return func(c *command) {
+	return func(c *Command) {
 		c.args = append(c.args, "-fixed", strconv.FormatUint(width, 10))
 	}
 }
@@ -178,7 +177,7 @@ func WithCharFixedWidth(width uint64) option {
 //
 // Works only with `WithModeLinePrinter`.
 func WithLineFixedSpacing(spacing uint64) option {
-	return func(c *command) {
+	return func(c *Command) {
 		c.args = append(c.args, "-linespacing", strconv.FormatUint(spacing, 10))
 	}
 }
@@ -189,7 +188,7 @@ func WithLineFixedSpacing(spacing uint64) option {
 // This can be helpful for tables where clipped (invisible) text would overlap
 // the next column.
 func WithTextClipping() option {
-	return func(c *command) {
+	return func(c *Command) {
 		c.args = append(c.args, "-clip")
 	}
 }
@@ -199,7 +198,7 @@ func WithTextClipping() option {
 //
 // This is useful to skip watermarks drawn on top of body text, etc.
 func WithNoTextDiagonal() option {
-	return func(c *command) {
+	return func(c *Command) {
 		c.args = append(c.args, "-nodiag")
 	}
 }
@@ -211,7 +210,7 @@ func WithNoTextDiagonal() option {
 //
 // Available options: `pdftotext -listencodings`.
 func WithEncoding(name string) option {
-	return func(c *command) {
+	return func(c *Command) {
 		c.args = append(c.args, "-enc", name)
 	}
 }
@@ -220,21 +219,21 @@ func WithEncoding(name string) option {
 //
 // Available options: "unix", "dos", "mac".
 func WithEndOfLine(kind string) option {
-	return func(c *command) {
+	return func(c *Command) {
 		c.args = append(c.args, "-eol", kind)
 	}
 }
 
 // Don’t insert a page breaks (form feed character) at the end of each page.
 func WithNoPageBreak() option {
-	return func(c *command) {
+	return func(c *Command) {
 		c.args = append(c.args, "-nopgbrk")
 	}
 }
 
 // Insert a Unicode byte order marker (BOM) at the start of the text output.
 func WithByteOrderMarker() option {
-	return func(c *command) {
+	return func(c *Command) {
 		c.args = append(c.args, "-bom")
 	}
 }
@@ -244,7 +243,7 @@ func WithByteOrderMarker() option {
 // Text in the left margin (i.e., within that many points of the left edge
 // of the page) is discarded.
 func WithMarginLeft(margin uint64) option {
-	return func(c *command) {
+	return func(c *Command) {
 		c.args = append(c.args, "-marginl", strconv.FormatUint(margin, 10))
 	}
 }
@@ -254,7 +253,7 @@ func WithMarginLeft(margin uint64) option {
 // Text in the right margin (i.e., within that many points of the right edge
 // of the page) is discarded.
 func WithMarginRight(margin uint64) option {
-	return func(c *command) {
+	return func(c *Command) {
 		c.args = append(c.args, "-marginr", strconv.FormatUint(margin, 10))
 	}
 }
@@ -264,7 +263,7 @@ func WithMarginRight(margin uint64) option {
 // Text in the top margin (i.e., within that many points of the top edge
 // of the page) is discarded.
 func WithMarginTop(margin uint64) option {
-	return func(c *command) {
+	return func(c *Command) {
 		c.args = append(c.args, "-margint", strconv.FormatUint(margin, 10))
 	}
 }
@@ -274,14 +273,14 @@ func WithMarginTop(margin uint64) option {
 // Text in the bottom margin (i.e., within that many points of the bottom edge
 // of the page) is discarded.
 func WithMarginBottom(margin uint64) option {
-	return func(c *command) {
+	return func(c *Command) {
 		c.args = append(c.args, "-marginb", strconv.FormatUint(margin, 10))
 	}
 }
 
 // Specifies the margins, in points.
 func WithMargin(t, r, b, l uint64) option {
-	return func(c *command) {
+	return func(c *Command) {
 		WithMarginTop(t)
 		WithMarginRight(r)
 		WithMarginBottom(b)
@@ -293,14 +292,14 @@ func WithMargin(t, r, b, l uint64) option {
 //
 // Providing this will bypass all security restrictions.
 func WithOwnerPassword(password string) option {
-	return func(c *command) {
+	return func(c *Command) {
 		c.args = append(c.args, "-opw", password)
 	}
 }
 
 // Specify the user password for the PDF file.
 func WithUserPassword(password string) option {
-	return func(c *command) {
+	return func(c *Command) {
 		c.args = append(c.args, "-upw", password)
 	}
 }
