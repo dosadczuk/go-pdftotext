@@ -1,4 +1,4 @@
-// Package pdftotext is a wrapper around Xpdf command line tool `pdftotext`.
+// Package pdftotext is a wrapper for Xpdf command line tool `pdftotext`.
 //
 // What is `pdftotext`?
 //
@@ -11,6 +11,7 @@ import (
 	"bytes"
 	"context"
 	"io"
+	"log"
 	"os/exec"
 	"strconv"
 )
@@ -26,9 +27,17 @@ type command struct {
 
 // NewCommand creates new `pdftotext` command.
 func NewCommand(opts ...option) *command {
-	cmd := &command{path: "/usr/bin/pdftotext"}
+	cmd := &command{path: "pdftotext"}
 	for _, opt := range opts {
 		opt(cmd)
+	}
+
+	var err error
+
+	// assert that executable exists and get absolute path
+	cmd.path, err = exec.LookPath(cmd.path)
+	if err != nil {
+		log.Fatal(err)
 	}
 
 	return cmd
